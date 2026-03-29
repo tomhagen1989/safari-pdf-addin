@@ -1,0 +1,17 @@
+{
+  "name": "safari-pdf-addin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Safari extension + bookmarklet to save articles as PDF",
+  "scripts": {
+    "generate-icons": "node scripts/generate-icons.js",
+    "build-bookmarklet": "node scripts/build-bookmarklet.js",
+    "build": "npm run generate-icons && npm run build-bookmarklet"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.97"
+  }
+}

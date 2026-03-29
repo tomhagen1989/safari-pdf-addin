@@ -1,0 +1,150 @@
+/* ================================================================
+   Print-optimised article styles
+   Screen: clean readable layout  |  Print: tight @page margins
+   ================================================================ */
+
+/* ── Reset ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ── Page layout ────────────────────────────────────────────────── */
+body {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 18px;
+  line-height: 1.75;
+  color: #1a1a1a;
+  background: #fff;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 5rem;
+}
+
+/* ── Loading / error state ──────────────────────────────────────── */
+#loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  color: #888;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 16px;
+}
+#loading .error { color: #c0392b; }
+
+/* ── Article header ─────────────────────────────────────────────── */
+h1 {
+  font-size: 1.85em;
+  line-height: 1.2;
+  margin-bottom: 0.4em;
+  font-weight: 700;
+}
+
+.meta {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 0.78em;
+  color: #666;
+  line-height: 1.4;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+.meta a { color: #0070c9; }
+
+/* ── Body content ────────────────────────────────────────────────── */
+p  { margin: 0 0 1.2em; }
+li { margin-bottom: 0.4em; }
+
+h2, h3, h4 {
+  font-size: 1.2em;
+  margin: 2rem 0 0.5rem;
+  line-height: 1.3;
+}
+h2 { font-size: 1.4em; }
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1.5rem auto;
+  border-radius: 4px;
+}
+
+a { color: #0070c9; }
+
+blockquote {
+  margin: 1.5rem 0;
+  padding: 0.6rem 1rem;
+  border-left: 3px solid #ccc;
+  color: #555;
+  font-style: italic;
+}
+blockquote p { margin: 0; }
+
+pre {
+  background: #f5f5f5;
+  padding: 1rem;
+  border-radius: 5px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  font-size: 0.85em;
+  margin: 1em 0;
+}
+
+code {
+  font-family: 'SF Mono', 'Courier New', Courier, monospace;
+  font-size: 0.85em;
+  background: #f0f0f0;
+  padding: 0.15em 0.35em;
+  border-radius: 3px;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5rem 0;
+  font-size: 0.9em;
+}
+th, td {
+  border: 1px solid #ddd;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+th { background: #f5f5f5; font-weight: 600; }
+
+/* ── Print styles ────────────────────────────────────────────────── */
+@page {
+  margin: 1.5cm 2cm;
+}
+
+@media print {
+  body {
+    font-size: 11pt;
+    max-width: none;
+    padding: 0;
+  }
+
+  #loading { display: none; }
+
+  /* Don't expand URLs inline — the source URL is already in the meta line */
+  a { color: inherit; }
+  a[href]::after { content: none !important; }
+
+  img { page-break-inside: avoid; }
+
+  h1, h2, h3 { page-break-after: avoid; }
+
+  p, li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  pre {
+    white-space: pre-wrap;
+    page-break-inside: avoid;
+  }
+}

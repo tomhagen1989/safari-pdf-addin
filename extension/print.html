@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Article PDF</title>
+  <link rel="stylesheet" href="print.css">
+</head>
+<body>
+  <!-- Shown while storage is being read -->
+  <div id="loading">
+    <p>Preparing article&hellip;</p>
+  </div>
+
+  <!-- Article content — hidden until data is loaded -->
+  <article id="content" hidden>
+    <h1 id="article-title"></h1>
+    <p id="article-meta" class="meta"></p>
+    <div id="article-body"></div>
+  </article>
+
+  <script src="print.js"></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ExportOptions.plist — used by the 'xcodebuild -exportArchive' step in CI.
+
+  teamID is overwritten at build time by the CI workflow using the
+  APPLE_TEAM_ID secret (see .github/workflows/build.yml).
+
+  method: "development" → installs on registered devices (free Dev account OK)
+  method: "ad-hoc"      → distributes to up to 100 registered devices
+  method: "app-store"   → submits to App Store / TestFlight (paid account required)
+-->
+<plist version="1.0">
+<dict>
+  <key>method</key>
+  <string>development</string>
+
+  <key>teamID</key>
+  <string>REPLACE_WITH_TEAM_ID</string>
+
+  <key>provisioningProfiles</key>
+  <dict>
+    <!-- Key = bundle identifier from manifest, Value = provisioning profile name -->
+    <key>com.example.pdfsaver</key>
+    <string>PDFSaver</string>
+  </dict>
+
+  <key>signingStyle</key>
+  <string>manual</string>
+
+  <key>stripSwiftSymbols</key>
+  <true/>
+
+  <key>compileBitcode</key>
+  <false/>
+</dict>
+</plist>
