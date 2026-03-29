@@ -150,7 +150,7 @@
   }
 
   var STRIP = 'script,noscript,style,iframe,form,button,input,select,textarea,nav,header,footer,aside,figure.ad';
-  var STRIP_CLS = /comment|footer|nav|sidebar|social|share|related|sponsor|ad-|popup|subscribe|cookie|widget|tooltip|flyout|overlay|modal/i;
+  var STRIP_CLS = /comment|footer|nav|sidebar|social|share|related|sponsor|ad-|popup|subscribe|cookie|widget|flyout|overlay|modal/i;
   var SAFE = { href: 1, src: 1, alt: 1, width: 1, height: 1 };
 
   // Matches elements whose entire text is decorative quote punctuation
@@ -214,11 +214,13 @@
       if (STRIP_CLS.test(ci)) n.remove();
     });
 
-    // Remove hidden / screen-reader-only elements (these bleed text into links)
+    // Remove hidden/assistive elements and tooltip POPUPS.
+    // Important: do NOT use [class*="tooltip"] here — tooltip wrapper elements
+    // often contain the real visible link text (e.g. The Ken's footnote links).
+    // [role="tooltip"] targets only the popup bubble, not the trigger.
     clone.querySelectorAll(
-      '[aria-hidden="true"],[hidden],'
-      + '[class*="sr-only"],[class*="screen-reader"],[class*="visually-hidden"],'
-      + '[class*="tooltip"],[class*="flyout"],[class*="popup"]'
+      '[aria-hidden="true"],[hidden],[role="tooltip"],'
+      + '[class*="sr-only"],[class*="screen-reader"],[class*="visually-hidden"]'
     ).forEach(function (n) { n.remove(); });
 
     // ── Step 3: Remove orphaned decorative quote characters ────────
