@@ -231,6 +231,37 @@
       }
     });
 
+    // ── Step 3b: Remove consecutive duplicate elements ────────────
+    // Sites often embed the same CTA/promo block twice (mobile + desktop).
+    // Walk all siblings; if two adjacent elements have identical trimmed text
+    // and neither is a structural container (p, a, li, h1-h6), remove second.
+    clone.querySelectorAll('p,a,li,h1,h2,h3,h4,h5,h6').forEach(function (n) {
+      var prev = n.previousElementSibling;
+      if (prev && prev.tagName === n.tagName
+          && prev.textContent.trim() === n.textContent.trim()
+          && n.textContent.trim().length > 0) {
+        n.remove();
+      }
+    });
+
+    // ── Step 3c: Trim trailing non-article content ─────────────────
+    // After the article body ends, sites add related-stories, newsletter
+    // promos, etc. Detect common end-of-article sentinels and cut there.
+    var END_SEL = [
+      '[class*="related"]', '[class*="more-stories"]', '[class*="newsletter"]',
+      '[class*="subscribe"]', '[class*="signup"]', '[class*="also-read"]',
+      '[class*="recommended"]', '[class*="you-might"]', '[class*="read-more"]',
+      '[class*="tags"]', '[class*="author-bio"]'
+    ].join(',');
+    try {
+      var endEl = clone.querySelector(END_SEL);
+      while (endEl) {
+        var next = endEl.nextElementSibling;
+        endEl.remove();
+        endEl = next;
+      }
+    } catch (e) {}
+
     // ── Step 4: Resolve lazy-loaded images ────────────────────────
     clone.querySelectorAll('img').forEach(function (img) {
       var lazySrc = img.getAttribute('data-src')
@@ -305,7 +336,7 @@
     '#pspacer{height:48px}',
 
     // ── Article layout — use site's own bg + font ─────────────────
-    'body{font-family:' + theme.fontFamily + ';font-size:20px;line-height:1.8;'
+    'body{font-family:' + theme.fontFamily + ';font-size:20px;line-height:1.65;'
       + 'color:' + theme.color + ';background:' + theme.bg + ';'
       + 'max-width:700px;margin:0 auto;padding:1.5rem 1.5rem 4rem;'
       + '-webkit-font-smoothing:antialiased}',
