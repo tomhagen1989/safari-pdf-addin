@@ -1,13 +1,10 @@
 /**
  * PDF Saver Bookmarklet — unminified source
  *
- * Zero-install fallback. Save this as a bookmark URL in Safari (after minifying).
- * The CI pipeline produces a ready-to-use minified version as a release artifact.
- *
  * Usage on iPhone:
  *   1. Open bookmarklet/index.html in Safari and follow the install steps.
  *   2. On any article page, open Bookmarks and tap "Save as PDF".
- *   3. A clean article page opens → tap Share → Print → Save to Files.
+ *   3. Tap the blue "Save as PDF" button → Share → Print → pinch preview → Save to Files.
  */
 (function () {
   'use strict';
@@ -43,6 +40,28 @@
       if (!t) continue;
       var clean = t.trim().replace(/^by\s+/i, '');
       if (clean.length > 0 && clean.length < 150) return clean;
+    }
+    return null;
+  }
+
+  // ── Published date ───────────────────────────────────────────────
+  function getDate() {
+    var sels = [
+      'meta[property="article:published_time"]',
+      'meta[name="pubdate"]',
+      'meta[name="publishdate"]',
+      'time[datetime]',
+      '[itemprop="datePublished"]'
+    ];
+    for (var i = 0; i < sels.length; i++) {
+      var el = document.querySelector(sels[i]);
+      if (!el) continue;
+      var raw = el.getAttribute('datetime') || el.getAttribute('content') || el.textContent;
+      if (!raw) continue;
+      try {
+        var d = new Date(raw.trim());
+        if (!isNaN(d)) return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+      } catch (e) {}
     }
     return null;
   }
@@ -92,23 +111,53 @@
     return best;
   }
 
-  var STRIP = 'script,noscript,style,iframe,form,button,input,select,textarea,nav,header,footer,aside';
-  var STRIP_CLS = /comment|footer|nav|sidebar|social|share|related|sponsor|ad-|popup|subscribe|cookie|widget/i;
-  var SAFE = { href: 1, src: 1, alt: 1, title: 1, width: 1, height: 1 };
+  var STRIP = 'script,noscript,style,iframe,form,button,input,select,textarea,nav,header,footer,aside,figure.ad';
+  var STRIP_CLS = /comment|footer|nav|sidebar|social|share|related|sponsor|ad-|popup|subscribe|cookie|widget|tooltip|flyout|overlay|modal/i;
+  var SAFE = { href: 1, src: 1, alt: 1, width: 1, height: 1 };
 
   function cleanEl(el) {
     var clone = el.cloneNode(true);
+
+    // Remove structural noise
     STRIP.split(',').forEach(function (tag) {
-      clone.querySelectorAll(tag).forEach(function (n) { n.remove(); });
+      try { clone.querySelectorAll(tag.trim()).forEach(function (n) { n.remove(); }); } catch(e) {}
     });
+
+    // Remove elements whose class/id is clearly non-content
     clone.querySelectorAll('[class],[id]').forEach(function (n) {
-      if (STRIP_CLS.test(((n.className || '') + ' ' + (n.id || '')).toLowerCase())) n.remove();
+      var ci = ((n.className || '') + ' ' + (n.id || '')).toLowerCase();
+      if (STRIP_CLS.test(ci)) n.remove();
     });
+
+    // Remove hidden elements and screen-reader-only spans that leak text into
+    // the visible flow (e.g. tooltip text running into link text)
+    clone.querySelectorAll(
+      '[aria-hidden="true"],[hidden],'
+      + '[class*="sr-only"],[class*="screen-reader"],[class*="visually-hidden"],'
+      + '[class*="tooltip"],[class*="flyout"],[class*="popup"]'
+    ).forEach(function (n) { n.remove(); });
+
+    // Resolve lazy-loaded images: try common data-* src attributes
+    clone.querySelectorAll('img').forEach(function (img) {
+      var lazySrc = img.getAttribute('data-src')
+        || img.getAttribute('data-lazy-src')
+        || img.getAttribute('data-original')
+        || img.getAttribute('data-img-src')
+        || img.getAttribute('data-delayed-url');
+      if (lazySrc) {
+        try { img.setAttribute('src', new URL(lazySrc, window.location.href).href); }
+        catch (e) {}
+      }
+    });
+
+    // Strip all attributes except safe allow-list
     clone.querySelectorAll('*').forEach(function (n) {
       Array.prototype.slice.call(n.attributes).forEach(function (a) {
         if (!SAFE[a.name]) n.removeAttribute(a.name);
       });
     });
+
+    // Resolve relative URLs to absolute
     clone.querySelectorAll('img[src]').forEach(function (img) {
       try { img.src = new URL(img.getAttribute('src'), window.location.href).href; }
       catch (e) { img.remove(); }
@@ -117,60 +166,115 @@
       try { a.href = new URL(a.getAttribute('href'), window.location.href).href; }
       catch (e) {}
     });
+
     return clone.innerHTML;
+  }
+
+  // ── Reading time estimate ────────────────────────────────────────
+  function readingTime(html) {
+    var words = (html.replace(/<[^>]+>/g, ' ').match(/\S+/g) || []).length;
+    var mins = Math.max(1, Math.round(words / 200));
+    return mins + ' min read';
   }
 
   // ── Build & open print page ──────────────────────────────────────
   var title    = getTitle();
   var byline   = getByline();
+  var pubDate  = getDate();
   var siteName = getSiteName();
   var content  = cleanEl(findBestEl());
   var url      = window.location.href;
+  var estTime  = readingTime(content);
 
+  // Meta line: Author · Date · Site · Reading time
   var metaParts = [];
   if (byline)   metaParts.push(escHtml(byline));
-  if (siteName) metaParts.push(escHtml(siteName));
-  metaParts.push('<a href="' + escHtml(url) + '">' + escHtml(url) + '</a>');
+  if (pubDate)  metaParts.push(escHtml(pubDate));
+  if (siteName) metaParts.push('<a href="' + escHtml(url) + '">' + escHtml(siteName) + '</a>');
+  metaParts.push(escHtml(estTime));
 
   var css = [
-    '@page{margin:1.5cm 2cm}',
-    // Main bar — fixed at top, hidden when printing
-    '#pbar{position:fixed;top:0;left:0;right:0;background:#007aff;color:white;'
+    '@page{margin:2cm 2.5cm}',
+
+    // ── Sticky bar (hidden in print) ──────────────────────────────
+    '#pbar{position:fixed;top:0;left:0;right:0;background:#1a1a1a;color:white;'
       + 'display:flex;align-items:center;justify-content:space-between;'
-      + 'padding:10px 16px;z-index:9999;font-family:-apple-system,sans-serif;'
-      + 'box-shadow:0 2px 8px rgba(0,0,0,.25)}',
-    '#pbar span{font-size:14px;font-weight:600}',
-    '#pbar button{background:white;color:#007aff;border:none;border-radius:8px;'
-      + 'padding:8px 18px;font-weight:700;font-size:14px;cursor:pointer}',
-    '#pspacer{height:52px}',  // pushes content below the bar
-    'body{font-family:Georgia,serif;font-size:18px;line-height:1.75;color:#1a1a1a;max-width:680px;margin:0 auto;padding:1rem 1.5rem 3rem}',
-    'h1{font-size:1.85em;line-height:1.2;margin-bottom:.4em}',
-    '.meta{font-family:-apple-system,sans-serif;font-size:.78em;color:#666;margin-bottom:2rem;padding-bottom:1rem;border-bottom:2px solid #e0e0e0}',
-    '.meta a{color:#0070c9}',
-    'img{max-width:100%;height:auto;display:block;margin:1.5rem auto}',
-    'a{color:#0070c9}',
-    'blockquote{margin:1.5rem 0;padding:.6rem 1rem;border-left:3px solid #ccc;color:#555;font-style:italic}',
-    'pre{background:#f5f5f5;padding:1rem;border-radius:5px;overflow-x:auto;white-space:pre-wrap;font-size:.85em}',
-    'code{font-family:monospace;font-size:.85em;background:#f0f0f0;padding:.15em .35em;border-radius:3px}',
+      + 'padding:10px 20px;z-index:9999;font-family:-apple-system,sans-serif}',
+    '#pbar .logo{font-size:13px;font-weight:600;letter-spacing:.04em;opacity:.7}',
+    '#pbar button{background:#fff;color:#1a1a1a;border:none;border-radius:6px;'
+      + 'padding:7px 18px;font-weight:700;font-size:13px;cursor:pointer;letter-spacing:.02em}',
+    '#pspacer{height:48px}',
+
+    // ── Article layout ────────────────────────────────────────────
+    'body{font-family:Georgia,"Times New Roman",serif;font-size:20px;line-height:1.8;'
+      + 'color:#1a1a1a;max-width:700px;margin:0 auto;padding:1.5rem 1.5rem 4rem;'
+      + '-webkit-font-smoothing:antialiased}',
+
+    // Title — large, tight leading, slightly tracked
+    'h1{font-size:2.1em;line-height:1.15;font-weight:700;letter-spacing:-.02em;'
+      + 'margin-bottom:.5rem;color:#111}',
+
+    // Meta line under title
+    '.meta{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:.75em;'
+      + 'color:#888;margin-bottom:2.5rem;padding-bottom:1.2rem;'
+      + 'border-bottom:1px solid #ddd;line-height:1.6}',
+    '.meta a{color:#1a1a1a;text-decoration:underline;text-underline-offset:2px}',
+
+    // Body paragraphs
+    'p{margin:0 0 1.4em}',
+
+    // Headings within article body
+    'h2{font-size:1.35em;font-weight:700;line-height:1.25;margin:2.5rem 0 .6rem;letter-spacing:-.01em}',
+    'h3{font-size:1.1em;font-weight:700;line-height:1.3;margin:2rem 0 .5rem}',
+    'h4,h5{font-size:1em;font-weight:700;margin:1.5rem 0 .4rem}',
+
+    // Blockquotes styled as pull quotes
+    'blockquote{margin:2rem 0;padding:1rem 1.5rem;border-left:3px solid #1a1a1a;'
+      + 'font-size:1.1em;line-height:1.6;color:#333;font-style:italic}',
+    'blockquote p{margin:0}',
+
+    // Images
+    'img{max-width:100%;height:auto;display:block;margin:2rem auto;border-radius:3px}',
+    'figcaption{font-family:-apple-system,sans-serif;font-size:.78em;color:#888;'
+      + 'text-align:center;margin:-1rem 0 2rem}',
+
+    // Lists
+    'ul,ol{padding-left:1.5rem;margin:0 0 1.4em}',
+    'li{margin-bottom:.4em}',
+
+    // Code
+    'pre{background:#f5f5f5;padding:1rem;border-radius:4px;overflow-x:auto;'
+      + 'white-space:pre-wrap;font-size:.82em;margin:0 0 1.4em}',
+    'code{font-family:"SF Mono",Menlo,monospace;font-size:.82em;'
+      + 'background:#f0f0f0;padding:.15em .35em;border-radius:3px}',
     'pre code{background:none;padding:0}',
-    'h2,h3,h4{margin:2rem 0 .5rem;line-height:1.3}',
+
+    // Back link
+    '.back{font-family:-apple-system,sans-serif;font-size:.8em;color:#888;'
+      + 'margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee}',
+    '.back a{color:#888}',
+
+    // ── Print overrides ───────────────────────────────────────────
     '@media print{'
       + '#pbar,#pspacer{display:none!important}'
-      + 'body{font-size:11pt;max-width:none;padding:0}'
-      + 'a{color:inherit}a[href]::after{content:none!important}'
-      + 'img{page-break-inside:avoid}h1,h2,h3{page-break-after:avoid}'
-      + 'p,li{orphans:3;widows:3}}',
+      + 'body{font-size:11pt;max-width:none;padding:0;line-height:1.65}'
+      + 'h1{font-size:22pt}h2{font-size:14pt}h3{font-size:12pt}'
+      + 'a{color:inherit;text-decoration:none}'
+      + 'a[href]::after{content:none!important}'
+      + 'img{max-height:4in;page-break-inside:avoid}'
+      + 'h1,h2,h3{page-break-after:avoid}'
+      + 'p,li{orphans:3;widows:3}'
+      + 'blockquote{border-left:2pt solid #333}'
+      + '}',
   ].join('');
 
-  // Sticky bar with Print button — more reliable than auto window.print() on iOS
   var bar = '<div id="pbar">'
-    + '<span>PDF Saver</span>'
+    + '<span class="logo">PDF SAVER</span>'
     + '<button onclick="window.print()">Save as PDF</button>'
     + '</div>'
     + '<div id="pspacer"></div>';
 
-  var backLink = '<p style="margin-top:2rem;font-family:-apple-system,sans-serif;font-size:.85rem;color:#888">'
-    + '<a href="' + escHtml(url) + '" style="color:#0070c9">&larr; Back to original article</a></p>';
+  var backLink = '<p class="back"><a href="' + escHtml(url) + '">&larr; Back to original article</a></p>';
 
   var html = '<!DOCTYPE html><html lang="en"><head>'
     + '<meta charset="utf-8">'
@@ -180,13 +284,11 @@
     + '</head><body>'
     + bar
     + '<h1>' + escHtml(title) + '</h1>'
-    + '<p class="meta">' + metaParts.join(' &mdash; ') + '</p>'
+    + '<p class="meta">' + metaParts.join(' &nbsp;&middot;&nbsp; ') + '</p>'
     + content
     + backLink
     + '</body></html>';
 
-  // Replace the current page content — no popup needed, works on iOS without
-  // any pop-up blocker issues.
   document.open();
   document.write(html);
   document.close();
