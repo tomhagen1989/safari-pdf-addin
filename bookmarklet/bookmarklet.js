@@ -12,7 +12,7 @@
 (function () {
   'use strict';
 
-  var READABILITY_URL = 'https://tomhagen1989.github.io/safari-pdf-addin/readability.js';
+  var READABILITY_URL = 'https:/' + '/tomhagen1989.github.io/safari-pdf-addin/readability.js';
 
   // ── Utilities ────────────────────────────────────────────────────
   function escHtml(s) {
