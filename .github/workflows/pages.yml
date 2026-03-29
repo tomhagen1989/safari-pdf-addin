@@ -29,19 +29,12 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build bookmarklet
-        run: npm run build-bookmarklet
-
-      # Copy just the bookmarklet folder into a _site directory for Pages
+      # Serve the bookmarklet/ folder as-is — index.html fetches bookmarklet.js
+      # at runtime, so both files must be present in the deployment.
       - name: Prepare Pages output
         run: |
           mkdir -p _site
           cp -r bookmarklet/. _site/
-          # Remove the raw source file — users only need index.html and the URL
-          rm -f _site/bookmarklet.js
 
       - uses: actions/configure-pages@v4
 
