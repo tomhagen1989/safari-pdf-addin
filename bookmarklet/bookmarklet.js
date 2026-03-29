@@ -412,31 +412,60 @@
   var siteName = getSiteName();
   var pageUrl  = window.location.href;
 
+  // ── Show loading overlay immediately ─────────────────────────────
+  // Gives instant visual feedback. Disappears when document.write() fires.
+  // We inject into the live DOM (not document.write) so our script tag
+  // injection below is not disrupted.
+  try {
+    var overlay = document.createElement('div');
+    overlay.id = 'pdfSaverOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;'
+      + 'background:rgba(26,26,26,.7);display:flex;align-items:center;'
+      + 'justify-content:center;z-index:2147483647;'
+      + 'font-family:-apple-system,sans-serif;font-size:17px;color:#fff;'
+      + 'letter-spacing:.02em;pointer-events:none';
+    overlay.textContent = 'Loading article\u2026';
+    document.body.appendChild(overlay);
+  } catch (e) {}
+
   // ── Load Readability.js and extract ──────────────────────────────
+  // CSP violations do NOT fire script.onerror on iOS Safari, so we use
+  // a timeout as the safety net — if neither onload nor onerror fires
+  // within 4 s, we fall back to our own extractor.
+  var done = false;
+
+  function finish(content, exTitle, exByline) {
+    if (done) return;
+    done = true;
+    renderPage(content, exTitle || null, exByline || null);
+  }
+
+  var cspTimeout = setTimeout(function () {
+    finish(fallbackExtract(findBestEl()));
+  }, 4000);
+
   var script = document.createElement('script');
   script.src = READABILITY_URL;
 
   script.onload = function () {
+    clearTimeout(cspTimeout);
     try {
       // Readability modifies the document in place — that's fine, we're
       // about to replace the entire page with document.write() anyway.
       var article = new Readability(document).parse(); // eslint-disable-line no-undef
       if (article && article.content && article.content.length > 300) {
-        renderPage(
-          postProcess(article.content),
-          article.title || null,
-          article.byline || null
-        );
+        finish(postProcess(article.content), article.title, article.byline);
         return;
       }
     } catch (e) {}
     // Readability returned nothing useful — fall back
-    renderPage(fallbackExtract(findBestEl()));
+    finish(fallbackExtract(findBestEl()));
   };
 
   script.onerror = function () {
+    clearTimeout(cspTimeout);
     // Network error (offline, GitHub Pages down, etc.) — fall back silently
-    renderPage(fallbackExtract(findBestEl()));
+    finish(fallbackExtract(findBestEl()));
   };
 
   document.head.appendChild(script);
