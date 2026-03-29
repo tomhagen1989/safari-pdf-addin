@@ -157,19 +157,15 @@
     + '<h1>' + escHtml(title) + '</h1>'
     + '<p class="meta">' + metaParts.join(' &mdash; ') + '</p>'
     + content
+    + '<p style="margin-top:2rem;font-family:-apple-system,sans-serif;font-size:.85rem;color:#888">'
+    + '<a href="' + escHtml(url) + '" style="color:#0070c9">&larr; Back to original article</a>'
+    + '</p>'
     + '<script>window.addEventListener("load",function(){window.print();});<\/script>'
     + '</body></html>';
 
-  var w = window.open('', '_blank');
-  if (!w) {
-    alert(
-      'PDF Saver: Safari blocked the pop-up.\n\n' +
-      'Tap the address bar area for the "Pop-up Blocked" notice and allow it, ' +
-      'then tap the bookmark again.'
-    );
-    return;
-  }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
+  // Replace the current page content — no popup needed, works on iOS without
+  // any pop-up blocker issues.
+  document.open();
+  document.write(html);
+  document.close();
 })();
