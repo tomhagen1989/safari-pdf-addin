@@ -144,7 +144,7 @@
     return best;
   }
 
-  var STRIP = 'script,noscript,style,iframe,form,button,input,select,textarea,nav,header,footer,aside,figure.ad';
+  var STRIP = 'script,noscript,style,svg,iframe,form,button,input,select,textarea,nav,header,footer,aside,figure.ad';
   var STRIP_CLS = /comment|footer|nav|sidebar|social|share|related|sponsor|ad-|popup|subscribe|cookie|widget|flyout|overlay|modal/i;
   var SAFE_ATTRS = { href: 1, src: 1, alt: 1, width: 1, height: 1 };
   var DECORATIVE_QUOTE = /^[\u201c\u201d\u2018\u2019\u0022\u275b-\u275e\u00ab\u00bb]{1,4}$/;
@@ -155,26 +155,33 @@
   function fallbackExtract(el) {
     var clone = el.cloneNode(true);
 
-    // Normalise pull-quote containers before stripping classes
+    // Normalise pull-quote containers before stripping classes.
+    // Use textContent (not child tag queries) so it works regardless of
+    // whether the site uses <p>, <span>, <div>, or other inner elements.
+    // SVG icons inside the container produce no textContent, so they're
+    // automatically excluded.
     try {
       clone.querySelectorAll(PQ_SEL).forEach(function (pq) {
-        var texts = [];
-        pq.querySelectorAll('p, blockquote, div').forEach(function (child) {
-          if (child.parentNode !== pq && child.parentNode.parentNode !== pq) return;
-          var t = child.textContent.trim();
-          if (!t || DECORATIVE_QUOTE.test(t)) return;
-          if (texts.indexOf(t) === -1) texts.push(t);
-        });
-        if (texts.length === 0) return;
+        var lines = (pq.textContent || '').split('\n')
+          .map(function (l) { return l.trim(); })
+          .filter(function (l) { return l && !DECORATIVE_QUOTE.test(l); });
+        // Deduplicate consecutive identical lines
+        lines = lines.filter(function (l, i) { return i === 0 || l !== lines[i - 1]; });
+        if (lines.length === 0) return;
+
         var bq = document.createElement('blockquote');
         bq.setAttribute('data-pullquote', '1');
-        var last = texts[texts.length - 1];
+
         var attrib = null;
-        if (texts.length > 1 && last.length < 120 && last.length < texts[0].length * 0.8) {
-          attrib = texts.pop();
+        if (lines.length > 1) {
+          var last = lines[lines.length - 1];
+          if (last.length < 120 && last.length < lines[0].length * 0.8) {
+            attrib = lines.pop();
+          }
         }
+
         var qp = document.createElement('p');
-        qp.textContent = texts.join(' ');
+        qp.textContent = lines.join(' ');
         bq.appendChild(qp);
         if (attrib) {
           var cite = document.createElement('cite');
@@ -236,6 +243,9 @@
         || img.getAttribute('data-delayed-url');
       if (lz) { try { img.setAttribute('src', new URL(lz, pageUrl).href); } catch (e) {} }
     });
+
+    // Remove inline SVG icons (decorative quote marks, share icons, etc.)
+    div.querySelectorAll('svg').forEach(function (n) { n.remove(); });
 
     // Remove hidden / tooltip popup elements
     div.querySelectorAll(
