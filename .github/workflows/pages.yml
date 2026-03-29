@@ -2,11 +2,7 @@ name: Deploy Bookmarklet to GitHub Pages
 
 on:
   push:
-    branches: [main, "claude/*"]
-    paths:
-      - "bookmarklet/**"
-      - "scripts/**"
-      - "package.json"
+    branches: [main]
   workflow_dispatch:
 
 permissions:
