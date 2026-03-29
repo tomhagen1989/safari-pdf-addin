@@ -144,7 +144,7 @@
     return best;
   }
 
-  var STRIP = 'script,noscript,style,svg,iframe,form,button,input,select,textarea,nav,header,footer,aside,figure.ad';
+  var STRIP = 'script,noscript,style,svg,iframe,form,button,input,select,textarea,nav,footer,aside,figure.ad';
   var STRIP_CLS = /comment|footer|nav|sidebar|social|share|related|sponsor|ad-|popup|subscribe|cookie|widget|flyout|overlay|modal/i;
   var SAFE_ATTRS = { href: 1, src: 1, alt: 1, width: 1, height: 1 };
   var DECORATIVE_QUOTE = /^[\u201c\u201d\u2018\u2019\u0022\u275b-\u275e\u00ab\u00bb]{1,4}$/;
