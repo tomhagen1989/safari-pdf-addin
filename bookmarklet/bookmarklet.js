@@ -231,16 +231,26 @@
       }
     });
 
-    // ── Step 3b: Remove consecutive duplicate elements ────────────
-    // Sites often embed the same CTA/promo block twice (mobile + desktop).
-    // Walk all siblings; if two adjacent elements have identical trimmed text
-    // and neither is a structural container (p, a, li, h1-h6), remove second.
-    clone.querySelectorAll('p,a,li,h1,h2,h3,h4,h5,h6').forEach(function (n) {
-      var prev = n.previousElementSibling;
-      if (prev && prev.tagName === n.tagName
-          && prev.textContent.trim() === n.textContent.trim()
-          && n.textContent.trim().length > 0) {
-        n.remove();
+    // ── Step 3b: Remove duplicate short links (CTAs, promos) ─────────
+    // Sites embed the same CTA twice (mobile + desktop versions in separate
+    // wrapper divs, so adjacent-sibling checks don't catch them).
+    // Strategy: globally track all short link texts; remove later duplicates
+    // along with their containing paragraph if it only holds that link.
+    var seenLinks = {};
+    clone.querySelectorAll('a').forEach(function (a) {
+      var t = a.textContent.trim();
+      if (!t || t.length > 80) return; // only short CTA-style links
+      var key = t.toLowerCase();
+      if (seenLinks[key]) {
+        var p = a.parentNode;
+        // Remove the wrapper paragraph/div if it contains nothing else
+        if (p && p !== clone && p.textContent.trim() === t) {
+          p.remove();
+        } else {
+          a.remove();
+        }
+      } else {
+        seenLinks[key] = true;
       }
     });
 
@@ -336,24 +346,25 @@
     '#pspacer{height:48px}',
 
     // ── Article layout — use site's own bg + font ─────────────────
-    'body{font-family:' + theme.fontFamily + ';font-size:20px;line-height:1.65;'
+    'body{font-family:' + theme.fontFamily + ';font-size:18px;line-height:1.6;'
       + 'color:' + theme.color + ';background:' + theme.bg + ';'
       + 'max-width:700px;margin:0 auto;padding:1.5rem 1.5rem 4rem;'
       + '-webkit-font-smoothing:antialiased}',
 
-    'h1{font-size:2.1em;line-height:1.15;font-weight:700;letter-spacing:-.02em;'
-      + 'margin-bottom:.5rem}',
+    'h1{font-size:2em;line-height:1.15;font-weight:700;letter-spacing:-.02em;'
+      + 'margin-bottom:.5rem;word-break:break-word}',
 
     '.meta{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:.75em;'
       + 'color:#888;margin-bottom:2.5rem;padding-bottom:1.2rem;'
       + 'border-bottom:1px solid rgba(0,0,0,.12);line-height:1.6}',
     '.meta a{color:inherit;text-decoration:underline;text-underline-offset:2px}',
 
-    'p{margin:0 0 1.4em}',
+    'p{margin:0 0 1em}',
 
-    'h2{font-size:1.35em;font-weight:700;line-height:1.25;margin:2.5rem 0 .6rem;letter-spacing:-.01em}',
-    'h3{font-size:1.1em;font-weight:700;line-height:1.3;margin:2rem 0 .5rem}',
-    'h4,h5{font-size:1em;font-weight:700;margin:1.5rem 0 .4rem}',
+    'h2{font-size:1.3em;font-weight:700;line-height:1.25;margin:2rem 0 .5rem;'
+      + 'letter-spacing:-.01em;word-break:break-word}',
+    'h3{font-size:1.1em;font-weight:700;line-height:1.3;margin:1.5rem 0 .4rem;word-break:break-word}',
+    'h4,h5{font-size:1em;font-weight:700;margin:1.2rem 0 .3rem}',
 
     // ── Regular inline blockquotes ────────────────────────────────
     'blockquote:not([data-pullquote]){'
