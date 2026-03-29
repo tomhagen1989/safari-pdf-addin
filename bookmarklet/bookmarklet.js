@@ -18,6 +18,44 @@
       .replace(/"/g, '&quot;');
   }
 
+  // ── Site theme (colors + font) ───────────────────────────────────
+  // Reads computed styles from the live page so the PDF inherits the
+  // site's background colour and body font rather than using white/Georgia.
+  function getSiteTheme() {
+    var theme = {
+      bg: '#ffffff',
+      color: '#1a1a1a',
+      fontFamily: 'Georgia,"Times New Roman",serif'
+    };
+
+    // Font-family + text colour — sample a body paragraph
+    var para = document.querySelector('article p, [role="article"] p, main p');
+    if (para) {
+      var cs = window.getComputedStyle(para);
+      if (cs.fontFamily) theme.fontFamily = cs.fontFamily;
+      if (cs.color && cs.color !== 'rgba(0, 0, 0, 0)') theme.color = cs.color;
+    }
+
+    // Background colour — walk from article outward; skip transparent/dark
+    var bgCandidates = [
+      'article', '[role="article"]', '.article-body', '.article-content',
+      '.story-body', '.post-content', '.entry-content', 'main', 'body'
+    ];
+    for (var i = 0; i < bgCandidates.length; i++) {
+      var el = document.querySelector(bgCandidates[i]);
+      if (!el) continue;
+      var bg = window.getComputedStyle(el).backgroundColor;
+      if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') continue;
+      var nums = bg.match(/\d+/g);
+      if (!nums || nums.length < 3) continue;
+      // Perceived brightness (Rec. 601): only use light backgrounds
+      var bright = (parseInt(nums[0]) * 299 + parseInt(nums[1]) * 587 + parseInt(nums[2]) * 114) / 1000;
+      if (bright > 140) { theme.bg = bg; break; }
+    }
+
+    return theme;
+  }
+
   // ── Title ────────────────────────────────────────────────────────
   function getTitle() {
     var og = document.querySelector('meta[property="og:title"]');
@@ -115,29 +153,83 @@
   var STRIP_CLS = /comment|footer|nav|sidebar|social|share|related|sponsor|ad-|popup|subscribe|cookie|widget|tooltip|flyout|overlay|modal/i;
   var SAFE = { href: 1, src: 1, alt: 1, width: 1, height: 1 };
 
+  // Matches elements whose entire text is decorative quote punctuation
+  // U+201C " U+201D " U+2018 ' U+2019 ' U+275B ❛ U+275C ❜ U+275D ❝ U+275E ❞
+  var DECORATIVE_QUOTE = /^[\u201c\u201d\u2018\u2019\u0022\u275b-\u275e\u00ab\u00bb]{1,4}$/;
+
+  // Pull-quote container selectors (detected before class-stripping)
+  var PQ_SEL = '[class*="pullquote"],[class*="pull-quote"],[class*="pull_quote"],'
+    + '[class*="quote-block"],[class*="blockquote--pull"],[class*="featured-quote"],'
+    + '[class*="article-quote"],[class*="inset-quote"],[class*="story-quote"]';
+
   function cleanEl(el) {
     var clone = el.cloneNode(true);
 
-    // Remove structural noise
+    // ── Step 1: Normalise pull-quote containers ────────────────────
+    // Do this BEFORE stripping classes so we can still detect them.
+    try {
+      clone.querySelectorAll(PQ_SEL).forEach(function (pq) {
+        var texts = [];
+        // Collect non-decorative text lines from direct children
+        pq.querySelectorAll('p, blockquote, div').forEach(function (child) {
+          // Skip deeply nested nodes (only want top-level paragraphs)
+          if (child.parentNode !== pq && child.parentNode.parentNode !== pq) return;
+          var t = child.textContent.trim();
+          if (!t || DECORATIVE_QUOTE.test(t)) return;
+          if (texts.indexOf(t) === -1) texts.push(t);
+        });
+        if (texts.length === 0) return;
+
+        var bq = document.createElement('blockquote');
+        bq.setAttribute('data-pullquote', '1');
+
+        // Last short item is likely an attribution line
+        var last = texts[texts.length - 1];
+        var attrib = null;
+        if (texts.length > 1 && last.length < 120 && last.length < texts[0].length * 0.8) {
+          attrib = texts.pop();
+        }
+
+        var qp = document.createElement('p');
+        qp.textContent = texts.join(' ');
+        bq.appendChild(qp);
+
+        if (attrib) {
+          var cite = document.createElement('cite');
+          cite.textContent = attrib;
+          bq.appendChild(cite);
+        }
+
+        pq.parentNode.replaceChild(bq, pq);
+      });
+    } catch (e) {}
+
+    // ── Step 2: Remove structural noise ───────────────────────────
     STRIP.split(',').forEach(function (tag) {
       try { clone.querySelectorAll(tag.trim()).forEach(function (n) { n.remove(); }); } catch(e) {}
     });
 
-    // Remove elements whose class/id is clearly non-content
     clone.querySelectorAll('[class],[id]').forEach(function (n) {
       var ci = ((n.className || '') + ' ' + (n.id || '')).toLowerCase();
       if (STRIP_CLS.test(ci)) n.remove();
     });
 
-    // Remove hidden elements and screen-reader-only spans that leak text into
-    // the visible flow (e.g. tooltip text running into link text)
+    // Remove hidden / screen-reader-only elements (these bleed text into links)
     clone.querySelectorAll(
       '[aria-hidden="true"],[hidden],'
       + '[class*="sr-only"],[class*="screen-reader"],[class*="visually-hidden"],'
       + '[class*="tooltip"],[class*="flyout"],[class*="popup"]'
     ).forEach(function (n) { n.remove(); });
 
-    // Resolve lazy-loaded images: try common data-* src attributes
+    // ── Step 3: Remove orphaned decorative quote characters ────────
+    // e.g. a lone " or " left behind after pull-quote or CSS-icon elements
+    clone.querySelectorAll('p,div,span,h1,h2,h3,h4,h5,h6').forEach(function (n) {
+      if (n.children.length === 0 && DECORATIVE_QUOTE.test(n.textContent.trim())) {
+        n.remove();
+      }
+    });
+
+    // ── Step 4: Resolve lazy-loaded images ────────────────────────
     clone.querySelectorAll('img').forEach(function (img) {
       var lazySrc = img.getAttribute('data-src')
         || img.getAttribute('data-lazy-src')
@@ -150,14 +242,17 @@
       }
     });
 
-    // Strip all attributes except safe allow-list
+    // ── Step 5: Strip all attributes except safe allow-list ───────
     clone.querySelectorAll('*').forEach(function (n) {
+      // Preserve data-pullquote we added above
+      var keepPQ = n.getAttribute('data-pullquote');
       Array.prototype.slice.call(n.attributes).forEach(function (a) {
-        if (!SAFE[a.name]) n.removeAttribute(a.name);
+        if (!SAFE[a.name] && a.name !== 'data-pullquote') n.removeAttribute(a.name);
       });
+      if (keepPQ) n.setAttribute('data-pullquote', keepPQ);
     });
 
-    // Resolve relative URLs to absolute
+    // ── Step 6: Resolve relative URLs ─────────────────────────────
     clone.querySelectorAll('img[src]').forEach(function (img) {
       try { img.src = new URL(img.getAttribute('src'), window.location.href).href; }
       catch (e) { img.remove(); }
@@ -177,7 +272,8 @@
     return mins + ' min read';
   }
 
-  // ── Build & open print page ──────────────────────────────────────
+  // ── Gather everything ────────────────────────────────────────────
+  var theme    = getSiteTheme();
   var title    = getTitle();
   var byline   = getByline();
   var pubDate  = getDate();
@@ -193,6 +289,7 @@
   if (siteName) metaParts.push('<a href="' + escHtml(url) + '">' + escHtml(siteName) + '</a>');
   metaParts.push(escHtml(estTime));
 
+  // ── Styles ───────────────────────────────────────────────────────
   var css = [
     '@page{margin:2cm 2.5cm}',
 
@@ -205,54 +302,64 @@
       + 'padding:7px 18px;font-weight:700;font-size:13px;cursor:pointer;letter-spacing:.02em}',
     '#pspacer{height:48px}',
 
-    // ── Article layout ────────────────────────────────────────────
-    'body{font-family:Georgia,"Times New Roman",serif;font-size:20px;line-height:1.8;'
-      + 'color:#1a1a1a;max-width:700px;margin:0 auto;padding:1.5rem 1.5rem 4rem;'
+    // ── Article layout — use site's own bg + font ─────────────────
+    'body{font-family:' + theme.fontFamily + ';font-size:20px;line-height:1.8;'
+      + 'color:' + theme.color + ';background:' + theme.bg + ';'
+      + 'max-width:700px;margin:0 auto;padding:1.5rem 1.5rem 4rem;'
       + '-webkit-font-smoothing:antialiased}',
 
-    // Title — large, tight leading, slightly tracked
     'h1{font-size:2.1em;line-height:1.15;font-weight:700;letter-spacing:-.02em;'
-      + 'margin-bottom:.5rem;color:#111}',
+      + 'margin-bottom:.5rem}',
 
-    // Meta line under title
     '.meta{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:.75em;'
       + 'color:#888;margin-bottom:2.5rem;padding-bottom:1.2rem;'
-      + 'border-bottom:1px solid #ddd;line-height:1.6}',
-    '.meta a{color:#1a1a1a;text-decoration:underline;text-underline-offset:2px}',
+      + 'border-bottom:1px solid rgba(0,0,0,.12);line-height:1.6}',
+    '.meta a{color:inherit;text-decoration:underline;text-underline-offset:2px}',
 
-    // Body paragraphs
     'p{margin:0 0 1.4em}',
 
-    // Headings within article body
     'h2{font-size:1.35em;font-weight:700;line-height:1.25;margin:2.5rem 0 .6rem;letter-spacing:-.01em}',
     'h3{font-size:1.1em;font-weight:700;line-height:1.3;margin:2rem 0 .5rem}',
     'h4,h5{font-size:1em;font-weight:700;margin:1.5rem 0 .4rem}',
 
-    // Blockquotes styled as pull quotes
-    'blockquote{margin:2rem 0;padding:1rem 1.5rem;border-left:3px solid #1a1a1a;'
-      + 'font-size:1.1em;line-height:1.6;color:#333;font-style:italic}',
-    'blockquote p{margin:0}',
+    // ── Regular inline blockquotes ────────────────────────────────
+    'blockquote:not([data-pullquote]){'
+      + 'margin:2rem 0;padding:.8rem 1.4rem;'
+      + 'border-left:3px solid rgba(0,0,0,.2);'
+      + 'font-size:1.05em;line-height:1.65;font-style:italic;color:#444}',
+    'blockquote:not([data-pullquote]) p{margin:0}',
 
-    // Images
+    // ── Pull quotes — magazine style ──────────────────────────────
+    // Centred, large, separated from body text by rules, no border-left
+    'blockquote[data-pullquote]{'
+      + 'margin:2.5rem 0;padding:1.6rem 0;'
+      + 'border:none;border-top:2px solid rgba(0,0,0,.15);border-bottom:2px solid rgba(0,0,0,.15);'
+      + 'font-size:1.35em;line-height:1.45;font-style:italic;font-weight:600;'
+      + 'text-align:center;color:#333}',
+    'blockquote[data-pullquote] p{margin:0}',
+    'blockquote[data-pullquote] cite{'
+      + 'display:block;margin-top:.9rem;'
+      + 'font-size:.58em;font-weight:500;font-style:normal;'
+      + 'text-transform:uppercase;letter-spacing:.1em;color:#999}',
+
     'img{max-width:100%;height:auto;display:block;margin:2rem auto;border-radius:3px}',
-    'figcaption{font-family:-apple-system,sans-serif;font-size:.78em;color:#888;'
+    'figcaption{font-family:-apple-system,sans-serif;font-size:.78em;color:#999;'
       + 'text-align:center;margin:-1rem 0 2rem}',
 
-    // Lists
+    'hr{border:none;border-top:1px solid rgba(0,0,0,.12);margin:2rem 0}',
+
     'ul,ol{padding-left:1.5rem;margin:0 0 1.4em}',
     'li{margin-bottom:.4em}',
 
-    // Code
-    'pre{background:#f5f5f5;padding:1rem;border-radius:4px;overflow-x:auto;'
+    'pre{background:rgba(0,0,0,.04);padding:1rem;border-radius:4px;overflow-x:auto;'
       + 'white-space:pre-wrap;font-size:.82em;margin:0 0 1.4em}',
     'code{font-family:"SF Mono",Menlo,monospace;font-size:.82em;'
-      + 'background:#f0f0f0;padding:.15em .35em;border-radius:3px}',
+      + 'background:rgba(0,0,0,.06);padding:.15em .35em;border-radius:3px}',
     'pre code{background:none;padding:0}',
 
-    // Back link
-    '.back{font-family:-apple-system,sans-serif;font-size:.8em;color:#888;'
-      + 'margin-top:3rem;padding-top:1.5rem;border-top:1px solid #eee}',
-    '.back a{color:#888}',
+    '.back{font-family:-apple-system,sans-serif;font-size:.8em;color:#999;'
+      + 'margin-top:3rem;padding-top:1.5rem;border-top:1px solid rgba(0,0,0,.1)}',
+    '.back a{color:#999}',
 
     // ── Print overrides ───────────────────────────────────────────
     '@media print{'
@@ -264,7 +371,7 @@
       + 'img{max-height:4in;page-break-inside:avoid}'
       + 'h1,h2,h3{page-break-after:avoid}'
       + 'p,li{orphans:3;widows:3}'
-      + 'blockquote{border-left:2pt solid #333}'
+      + 'blockquote[data-pullquote]{page-break-inside:avoid}'
       + '}',
   ].join('');
 
