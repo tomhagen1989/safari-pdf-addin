@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PDF Saver — Bookmarklet Installer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      color: #1a1a1a;
+      background: #f2f2f7;
+      padding: 0 0 3rem;
+    }
+
+    header {
+      background: #007aff;
+      color: white;
+      padding: 2rem 1.5rem 1.5rem;
+    }
+    header h1 { font-size: 1.5rem; margin-bottom: .25rem; }
+    header p  { font-size: .95rem; opacity: .85; }
+
+    main { max-width: 600px; margin: 0 auto; padding: 1.5rem 1rem; }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 1.25rem 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    }
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #007aff;
+      margin-bottom: .75rem;
+    }
+    .card ol, .card ul { padding-left: 1.4rem; }
+    .card li { margin-bottom: .4rem; }
+
+    .bookmark-btn {
+      display: inline-block;
+      padding: 12px 28px;
+      background: #007aff;
+      color: white;
+      text-decoration: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      margin: .75rem 0 .25rem;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .tip {
+      background: #fff9e6;
+      border-left: 3px solid #f5a623;
+      border-radius: 0 8px 8px 0;
+      padding: .75rem 1rem;
+      font-size: .9rem;
+    }
+
+    kbd {
+      display: inline-block;
+      padding: .1em .4em;
+      background: #e5e5ea;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: .85em;
+    }
+
+    .note { font-size: .85rem; color: #888; margin-top: .5rem; }
+
+    footer {
+      text-align: center;
+      font-size: .8rem;
+      color: #888;
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>PDF Saver</h1>
+  <p>Save any article as PDF from Safari — no app install needed</p>
+</header>
+
+<main>
+
+  <!-- Step 1 -->
+  <div class="card">
+    <h2>Step 1 — Save the bookmarklet</h2>
+
+    <p>On your <strong>iPhone</strong>:</p>
+    <ol>
+      <li>Tap and hold the button below.</li>
+      <li>Choose <kbd>Add to Bookmarks</kbd>.</li>
+      <li>Name it <strong>Save as PDF</strong> and save it to an easy-to-reach folder.</li>
+    </ol>
+
+    <!-- The href is populated by the script below -->
+    <a class="bookmark-btn" id="bookmarklet-link" href="#">Save as PDF</a>
+
+    <p class="note">On desktop: drag the button to your bookmarks bar.</p>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="card">
+    <h2>Step 2 — Use it on any article</h2>
+    <ol>
+      <li>Open an article in Safari.</li>
+      <li>Tap the address bar, then <kbd>Bookmarks</kbd>, then <strong>Save as PDF</strong>.</li>
+      <li>A clean version of the article opens in a new tab.</li>
+      <li>Tap the <kbd>Share</kbd> button &rarr; <kbd>Print</kbd>.</li>
+      <li>Pinch <em>outward</em> on the page preview thumbnail.</li>
+      <li>Tap <kbd>Share</kbd> again &rarr; <kbd>Save to Files</kbd> &rarr; <kbd>Save</kbd>.</li>
+    </ol>
+  </div>
+
+  <!-- Print-to-PDF tip -->
+  <div class="tip">
+    <strong>iOS Print &rarr; PDF trick:</strong>
+    When the print sheet appears, <em>pinch outward</em> on the small page preview.
+    This converts the print job into a PDF file that you can save anywhere.
+  </div>
+
+  <!-- Pop-up note -->
+  <div class="card" style="margin-top:1rem">
+    <h2>If a pop-up is blocked</h2>
+    <p>
+      Safari may block the new tab on the first use.
+      Tap the <kbd>Pop-up Blocked</kbd> notice in the address bar area and choose
+      <strong>Allow</strong>, then tap the bookmark again.
+    </p>
+  </div>
+
+</main>
+
+<footer>
+  <p>PDF Saver &mdash; open source &mdash;
+     <a href="https://github.com/tomhagen1989/safari-pdf-addin">GitHub</a>
+  </p>
+</footer>
+
+<script>
+  /**
+   * The bookmarklet source is inlined here by scripts/build-bookmarklet.js.
+   * Until the build runs, a placeholder keeps the link functional for development.
+   */
+  var BOOKMARKLET = "(function%20()%7B'use%20strict'%3Bfunction%20escHtml(s)%7Breturn%20(s%7C%7C'').replace(%2F%26%2Fg%2C'%26amp%3B').replace(%2F%3C%2Fg%2C'%26lt%3B').replace(%2F%3E%2Fg%2C'%26gt%3B').replace(%2F%22%2Fg%2C'%26quot%3B')%3B%7Dfunction%20getTitle()%7Bvar%20og%3Ddocument.querySelector('meta%5Bproperty%3D%22og%3Atitle%22%5D')%3Bif%20(og%26%26og.content)return%20og.content.trim()%3Bvar%20h1%3Ddocument.querySelector('article%20h1%2Cmain%20h1%2Ch1')%3Bif%20(h1)return%20h1.textContent.trim()%3Breturn%20document.title.split(%2F%5Cs*%5B%7C%5C-%5Cu2013%5Cu2014%5D%5Cs*%2F)%5B0%5D.trim()%3B%7Dfunction%20getByline()%7Bvar%20sels%3D%5B%20'meta%5Bname%3D%22author%22%5D'%2C'%5Brel%3D%22author%22%5D'%2C'%5Bitemprop%3D%22author%22%5D'%2C'.author'%2C'.byline'%2C'%5Bclass*%3D%22author%22%5D'%2C'%5Bclass*%3D%22byline%22%5D'%20%5D%3Bfor%20(var%20i%3D0%3Bi%3Csels.length%3Bi%2B%2B)%7Bvar%20el%3Ddocument.querySelector(sels%5Bi%5D)%3Bif%20(!el)continue%3Bvar%20t%3D(el.tagName%3D%3D%3D'META'%3Fel.getAttribute('content')%3Ael.textContent)%3Bif%20(!t)continue%3Bvar%20clean%3Dt.trim().replace(%2F%5Eby%5Cs%2B%2Fi%2C'')%3Bif%20(clean.length%3E0%26%26clean.length%3C150)return%20clean%3B%7Dreturn%20null%3B%7Dfunction%20getSiteName()%7Bvar%20og%3Ddocument.querySelector('meta%5Bproperty%3D%22og%3Asite_name%22%5D')%3Bif%20(og%26%26og.content)return%20og.content.trim()%3Breturn%20window.location.hostname.replace(%2F%5Ewww%5C.%2F%2C'')%3B%7Dvar%20NEG%3D%2Fcomment%7Cfooter%7Cfootnote%7Cfoot%7Cnav%7Cheader%7Cside%7Csidebar%7Csponsor%7Cad-%7C%5Eads%24%7Cads%7Cpopup%7Csubscribe%7Csocial%7Cshare%7Crelated%7Cwidget%7Ccookie%2Fi%3Bvar%20POS%3D%2Farticle%7Cbody%7Ccontent%7Centry%7Cmain%7Cpage%7Cpost%7Ctext%7Cblog%7Cstory%2Fi%3Bfunction%20scoreEl(el)%7Bvar%20s%3D0%3Bvar%20ci%3D((el.className%7C%7C'')%2B'%20'%2B(el.id%7C%7C'')).toLowerCase()%3Bif%20(NEG.test(ci))s-%3D20%3Bif%20(POS.test(ci))s%2B%3D20%3Bvar%20txt%3Del.innerText%7C%7Cel.textContent%7C%7C''%3Bs%2B%3DMath.min(Math.floor(txt.length%2F100)%2C10)%3Bs%2B%3DMath.min((txt.match(%2F%2C%2Fg)%7C%7C%5B%5D).length%2C5)%3Bvar%20links%3Del.querySelectorAll('a')%3Bvar%20lt%3DArray.prototype.reduce.call(links%2Cfunction%20(n%2Ca)%7Breturn%20n%2B(a.textContent%7C%7C'').length%3B%7D%2C0)%3Bif%20(txt.length%3E0%26%26lt%2Ftxt.length%3E0.5)s-%3D10%3Breturn%20s%3B%7Dfunction%20findBestEl()%7Bvar%20sels%3D%5B%20'article'%2C'%5Brole%3D%22article%22%5D'%2C'%5Brole%3D%22main%22%5D'%2C'main'%2C'.post-content'%2C'.article-content'%2C'.entry-content'%2C'.story-body'%2C'%23article-body'%2C'%23content'%2C'.content'%20%5D%3Bfor%20(var%20i%3D0%3Bi%3Csels.length%3Bi%2B%2B)%7Bvar%20el%3Ddocument.querySelector(sels%5Bi%5D)%3Bif%20(el%26%26(el.innerText%7C%7Cel.textContent%7C%7C'').trim().length%3E300)return%20el%3B%7Dvar%20all%3Ddocument.querySelectorAll('div%2Csection%2Carticle')%3Bvar%20best%3Ddocument.body%2Cbs%3D-Infinity%3Bfor%20(var%20j%3D0%3Bj%3Call.length%3Bj%2B%2B)%7Bvar%20sc%3DscoreEl(all%5Bj%5D)%3Bif%20(sc%3Ebs)%7Bbs%3Dsc%3Bbest%3Dall%5Bj%5D%3B%7D%7Dreturn%20best%3B%7Dvar%20STRIP%3D'script%2Cnoscript%2Cstyle%2Ciframe%2Cform%2Cbutton%2Cinput%2Cselect%2Ctextarea%2Cnav%2Cheader%2Cfooter%2Caside'%3Bvar%20STRIP_CLS%3D%2Fcomment%7Cfooter%7Cnav%7Csidebar%7Csocial%7Cshare%7Crelated%7Csponsor%7Cad-%7Cpopup%7Csubscribe%7Ccookie%7Cwidget%2Fi%3Bvar%20SAFE%3D%7Bhref%3A1%2Csrc%3A1%2Calt%3A1%2Ctitle%3A1%2Cwidth%3A1%2Cheight%3A1%7D%3Bfunction%20cleanEl(el)%7Bvar%20clone%3Del.cloneNode(true)%3BSTRIP.split('%2C').forEach(function%20(tag)%7Bclone.querySelectorAll(tag).forEach(function%20(n)%7Bn.remove()%3B%7D)%3B%7D)%3Bclone.querySelectorAll('%5Bclass%5D%2C%5Bid%5D').forEach(function%20(n)%7Bif%20(STRIP_CLS.test(((n.className%7C%7C'')%2B'%20'%2B(n.id%7C%7C'')).toLowerCase()))n.remove()%3B%7D)%3Bclone.querySelectorAll('*').forEach(function%20(n)%7BArray.prototype.slice.call(n.attributes).forEach(function%20(a)%7Bif%20(!SAFE%5Ba.name%5D)n.removeAttribute(a.name)%3B%7D)%3B%7D)%3Bclone.querySelectorAll('img%5Bsrc%5D').forEach(function%20(img)%7Btry%20%7Bimg.src%3Dnew%20URL(img.getAttribute('src')%2Cwindow.location.href).href%3B%7Dcatch%20(e)%7Bimg.remove()%3B%7D%7D)%3Bclone.querySelectorAll('a%5Bhref%5D').forEach(function%20(a)%7Btry%20%7Ba.href%3Dnew%20URL(a.getAttribute('href')%2Cwindow.location.href).href%3B%7Dcatch%20(e)%7B%7D%7D)%3Breturn%20clone.innerHTML%3B%7Dvar%20title%3DgetTitle()%3Bvar%20byline%3DgetByline()%3Bvar%20siteName%3DgetSiteName()%3Bvar%20content%3DcleanEl(findBestEl())%3Bvar%20url%3Dwindow.location.href%3Bvar%20metaParts%3D%5B%5D%3Bif%20(byline)metaParts.push(escHtml(byline))%3Bif%20(siteName)metaParts.push(escHtml(siteName))%3BmetaParts.push('%3Ca%20href%3D%22'%2BescHtml(url)%2B'%22%3E'%2BescHtml(url)%2B'%3C%2Fa%3E')%3Bvar%20css%3D%5B%20'%40page%7Bmargin%3A1.5cm%202cm%7D'%2C'body%7Bfont-family%3AGeorgia%2Cserif%3Bfont-size%3A18px%3Bline-height%3A1.75%3Bcolor%3A%231a1a1a%3Bmax-width%3A680px%3Bmargin%3A0%20auto%3Bpadding%3A2.5rem%201.5rem%7D'%2C'h1%7Bfont-size%3A1.85em%3Bline-height%3A1.2%3Bmargin-bottom%3A.4em%7D'%2C'.meta%7Bfont-family%3A-apple-system%2Csans-serif%3Bfont-size%3A.78em%3Bcolor%3A%23666%3Bmargin-bottom%3A2rem%3Bpadding-bottom%3A1rem%3Bborder-bottom%3A2px%20solid%20%23e0e0e0%7D'%2C'.meta%20a%7Bcolor%3A%230070c9%7D'%2C'img%7Bmax-width%3A100%25%3Bheight%3Aauto%3Bdisplay%3Ablock%3Bmargin%3A1.5rem%20auto%7D'%2C'a%7Bcolor%3A%230070c9%7D'%2C'blockquote%7Bmargin%3A1.5rem%200%3Bpadding%3A.6rem%201rem%3Bborder-left%3A3px%20solid%20%23ccc%3Bcolor%3A%23555%3Bfont-style%3Aitalic%7D'%2C'pre%7Bbackground%3A%23f5f5f5%3Bpadding%3A1rem%3Bborder-radius%3A5px%3Boverflow-x%3Aauto%3Bwhite-space%3Apre-wrap%3Bfont-size%3A.85em%7D'%2C'code%7Bfont-family%3Amonospace%3Bfont-size%3A.85em%3Bbackground%3A%23f0f0f0%3Bpadding%3A.15em%20.35em%3Bborder-radius%3A3px%7D'%2C'pre%20code%7Bbackground%3Anone%3Bpadding%3A0%7D'%2C'h2%2Ch3%2Ch4%7Bmargin%3A2rem%200%20.5rem%3Bline-height%3A1.3%7D'%2C'%40media%20print%7Bbody%7Bfont-size%3A11pt%3Bmax-width%3Anone%3Bpadding%3A0%7Da%7Bcolor%3Ainherit%7Da%5Bhref%5D%3A%3Aafter%7Bcontent%3Anone!important%7Dimg%7Bpage-break-inside%3Aavoid%7Dh1%2Ch2%2Ch3%7Bpage-break-after%3Aavoid%7Dp%2Cli%7Borphans%3A3%3Bwidows%3A3%7D%7D'%2C%5D.join('')%3Bvar%20html%3D'%3C!DOCTYPE%20html%3E%3Chtml%20lang%3D%22en%22%3E%3Chead%3E'%2B'%3Cmeta%20charset%3D%22utf-8%22%3E'%2B'%3Cmeta%20name%3D%22viewport%22%20content%3D%22width%3Ddevice-width%2Cinitial-scale%3D1%22%3E'%2B'%3Ctitle%3E'%2BescHtml(title)%2B'%3C%2Ftitle%3E'%2B'%3Cstyle%3E'%2Bcss%2B'%3C%2Fstyle%3E'%2B'%3C%2Fhead%3E%3Cbody%3E'%2B'%3Ch1%3E'%2BescHtml(title)%2B'%3C%2Fh1%3E'%2B'%3Cp%20class%3D%22meta%22%3E'%2BmetaParts.join('%26mdash%3B')%2B'%3C%2Fp%3E'%2Bcontent%2B'%3Cscript%3Ewindow.addEventListener(%22load%22%2Cfunction%20()%7Bwindow.print()%3B%7D)%3B%3C%5C%2Fscript%3E'%2B'%3C%2Fbody%3E%3C%2Fhtml%3E'%3Bvar%20w%3Dwindow.open(''%2C'_blank')%3Bif%20(!w)%7Balert('PDF%20Saver%3ASafari%20blocked%20the%20pop-up.%5Cn%5Cn'%2B'Tap%20the%20address%20bar%20area%20for%20the%20%22Pop-up%20Blocked%22%20notice%20and%20allow%20it%2C'%2B'then%20tap%20the%20bookmark%20again.')%3Breturn%20%3B%7Dw.document.open()%3Bw.document.write(html)%3Bw.document.close()%3B%7D)()%3B";
+
+  // If the build script hasn't replaced the placeholder yet, fetch the raw JS
+  // and build it on the fly so this page still works during local development.
+  if (BOOKMARKLET === "BOOKMARKLET_PLACEHOLDER") {
+    fetch('bookmarklet.js')
+      .then(function(r) { return r.text(); })
+      .then(function(src) {
+        // Strip single-line comments and collapse whitespace for a usable href
+        var min = src
+          .replace(/\/\/[^\n]*/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        document.getElementById('bookmarklet-link').href = 'javascript:' + encodeURIComponent(min);
+      })
+      .catch(function() {
+        var link = document.getElementById('bookmarklet-link');
+        link.textContent = 'Build required — see README';
+        link.href = '#';
+      });
+  } else {
+    document.getElementById('bookmarklet-link').href = 'javascript:' + BOOKMARKLET;
+  }
+</script>
+
+</body>
+</html>

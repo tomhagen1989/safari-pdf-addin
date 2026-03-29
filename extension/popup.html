@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PDF Saver</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="icons/icon-48.png" alt="" class="logo" width="32" height="32">
+    <h1>PDF Saver</h1>
+  </header>
+
+  <main>
+    <p class="hint">
+      Extracts the article from this page and opens a clean, print-ready view.
+      Then use <strong>Share → Print → Save to Files</strong> to get the PDF.
+    </p>
+
+    <button id="convert-btn" type="button">Save as PDF</button>
+
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>
