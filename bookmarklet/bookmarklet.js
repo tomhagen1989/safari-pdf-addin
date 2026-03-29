@@ -146,11 +146,13 @@
 
   var STRIP = 'script,noscript,style,svg,iframe,form,button,input,select,textarea,nav,footer,aside,figure.ad';
   var STRIP_CLS = /comment|footer|nav|sidebar|social|share|related|sponsor|ad-|popup|subscribe|cookie|widget|flyout|overlay|modal/i;
-  var SAFE_ATTRS = { href: 1, src: 1, alt: 1, width: 1, height: 1 };
+  var SAFE_ATTRS = { href: 1, src: 1, alt: 1, width: 1, height: 1, srcset: 1, sizes: 1 };
   var DECORATIVE_QUOTE = /^[\u201c\u201d\u2018\u2019\u0022\u275b-\u275e\u00ab\u00bb]{1,4}$/;
   var PQ_SEL = '[class*="pullquote"],[class*="pull-quote"],[class*="pull_quote"],'
     + '[class*="quote-block"],[class*="blockquote--pull"],[class*="featured-quote"],'
-    + '[class*="article-quote"],[class*="inset-quote"],[class*="story-quote"]';
+    + '[class*="article-quote"],[class*="inset-quote"],[class*="story-quote"],'
+    + '[class*="editorial-quote"],[class*="entry-quote"],[class*="post-quote"],'
+    + '[class*="quote-callout"],[class*="quote-highlight"],[class*="callout-quote"]';
 
   function fallbackExtract(el) {
     var clone = el.cloneNode(true);
@@ -208,10 +210,24 @@
     });
 
     clone.querySelectorAll('img').forEach(function (img) {
+      // Resolve lazy src
       var lz = img.getAttribute('data-src') || img.getAttribute('data-lazy-src')
         || img.getAttribute('data-original') || img.getAttribute('data-img-src')
         || img.getAttribute('data-delayed-url');
       if (lz) { try { img.setAttribute('src', new URL(lz, pageUrl).href); } catch (e) {} }
+      // Resolve lazy srcset
+      var lzSet = img.getAttribute('data-srcset') || img.getAttribute('data-lazy-srcset');
+      if (lzSet) img.setAttribute('srcset', lzSet);
+      // Remove decorative images: alt="" means explicitly decorative per a11y spec.
+      // Extra guard: only remove if small (icon-sized) OR has no src at all.
+      if (img.getAttribute('alt') === '') {
+        var w = parseInt(img.getAttribute('width') || img.getAttribute('data-width') || '9999');
+        var h = parseInt(img.getAttribute('height') || img.getAttribute('data-height') || '9999');
+        var src = img.getAttribute('src') || img.getAttribute('data-src') || '';
+        if (w < 120 || h < 120 || /icon|quote|bullet|ornament|decorat|logo/i.test(src)) {
+          img.remove(); return;
+        }
+      }
     });
     clone.querySelectorAll('*').forEach(function (n) {
       var kpq = n.getAttribute('data-pullquote');
@@ -236,12 +252,22 @@
     var div = document.createElement('div');
     div.innerHTML = html;
 
-    // Resolve lazy images
+    // Resolve lazy images and remove decorative ones
     div.querySelectorAll('img').forEach(function (img) {
       var lz = img.getAttribute('data-src') || img.getAttribute('data-lazy-src')
         || img.getAttribute('data-original') || img.getAttribute('data-img-src')
         || img.getAttribute('data-delayed-url');
       if (lz) { try { img.setAttribute('src', new URL(lz, pageUrl).href); } catch (e) {} }
+      var lzSet = img.getAttribute('data-srcset') || img.getAttribute('data-lazy-srcset');
+      if (lzSet) img.setAttribute('srcset', lzSet);
+      if (img.getAttribute('alt') === '') {
+        var w = parseInt(img.getAttribute('width') || '9999');
+        var h = parseInt(img.getAttribute('height') || '9999');
+        var src = img.getAttribute('src') || '';
+        if (w < 120 || h < 120 || /icon|quote|bullet|ornament|decorat|logo/i.test(src)) {
+          img.remove(); return;
+        }
+      }
     });
 
     // Remove inline SVG icons (decorative quote marks, share icons, etc.)
