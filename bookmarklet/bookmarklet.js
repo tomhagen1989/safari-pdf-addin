@@ -134,7 +134,16 @@
 
   var css = [
     '@page{margin:1.5cm 2cm}',
-    'body{font-family:Georgia,serif;font-size:18px;line-height:1.75;color:#1a1a1a;max-width:680px;margin:0 auto;padding:2.5rem 1.5rem}',
+    // Main bar — fixed at top, hidden when printing
+    '#pbar{position:fixed;top:0;left:0;right:0;background:#007aff;color:white;'
+      + 'display:flex;align-items:center;justify-content:space-between;'
+      + 'padding:10px 16px;z-index:9999;font-family:-apple-system,sans-serif;'
+      + 'box-shadow:0 2px 8px rgba(0,0,0,.25)}',
+    '#pbar span{font-size:14px;font-weight:600}',
+    '#pbar button{background:white;color:#007aff;border:none;border-radius:8px;'
+      + 'padding:8px 18px;font-weight:700;font-size:14px;cursor:pointer}',
+    '#pspacer{height:52px}',  // pushes content below the bar
+    'body{font-family:Georgia,serif;font-size:18px;line-height:1.75;color:#1a1a1a;max-width:680px;margin:0 auto;padding:1rem 1.5rem 3rem}',
     'h1{font-size:1.85em;line-height:1.2;margin-bottom:.4em}',
     '.meta{font-family:-apple-system,sans-serif;font-size:.78em;color:#666;margin-bottom:2rem;padding-bottom:1rem;border-bottom:2px solid #e0e0e0}',
     '.meta a{color:#0070c9}',
@@ -145,8 +154,23 @@
     'code{font-family:monospace;font-size:.85em;background:#f0f0f0;padding:.15em .35em;border-radius:3px}',
     'pre code{background:none;padding:0}',
     'h2,h3,h4{margin:2rem 0 .5rem;line-height:1.3}',
-    '@media print{body{font-size:11pt;max-width:none;padding:0}a{color:inherit}a[href]::after{content:none!important}img{page-break-inside:avoid}h1,h2,h3{page-break-after:avoid}p,li{orphans:3;widows:3}}',
+    '@media print{'
+      + '#pbar,#pspacer{display:none!important}'
+      + 'body{font-size:11pt;max-width:none;padding:0}'
+      + 'a{color:inherit}a[href]::after{content:none!important}'
+      + 'img{page-break-inside:avoid}h1,h2,h3{page-break-after:avoid}'
+      + 'p,li{orphans:3;widows:3}}',
   ].join('');
+
+  // Sticky bar with Print button — more reliable than auto window.print() on iOS
+  var bar = '<div id="pbar">'
+    + '<span>PDF Saver</span>'
+    + '<button onclick="window.print()">Save as PDF</button>'
+    + '</div>'
+    + '<div id="pspacer"></div>';
+
+  var backLink = '<p style="margin-top:2rem;font-family:-apple-system,sans-serif;font-size:.85rem;color:#888">'
+    + '<a href="' + escHtml(url) + '" style="color:#0070c9">&larr; Back to original article</a></p>';
 
   var html = '<!DOCTYPE html><html lang="en"><head>'
     + '<meta charset="utf-8">'
@@ -154,13 +178,11 @@
     + '<title>' + escHtml(title) + '</title>'
     + '<style>' + css + '</style>'
     + '</head><body>'
+    + bar
     + '<h1>' + escHtml(title) + '</h1>'
     + '<p class="meta">' + metaParts.join(' &mdash; ') + '</p>'
     + content
-    + '<p style="margin-top:2rem;font-family:-apple-system,sans-serif;font-size:.85rem;color:#888">'
-    + '<a href="' + escHtml(url) + '" style="color:#0070c9">&larr; Back to original article</a>'
-    + '</p>'
-    + '<script>window.addEventListener("load",function(){window.print();});<\/script>'
+    + backLink
     + '</body></html>';
 
   // Replace the current page content — no popup needed, works on iOS without
