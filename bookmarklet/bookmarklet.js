@@ -537,12 +537,41 @@
     theme.bg = '#ffffff';
     theme.color = '#1a1a1a';
     var kenEl = document.querySelector('main.story-content') || document.body;
-    // Strip Ken-specific CTAs before extraction
+
+    // Strip noise by content structure — no class names, survives redesigns.
     try {
-      kenEl.querySelectorAll('a, p, div').forEach(function (n) {
+      // 1. Newsletter/promo tables: have images but no header cells.
+      //    Data tables always use <th>; widget tables never do.
+      kenEl.querySelectorAll('table').forEach(function (t) {
+        if (!t.querySelector('th') && t.querySelector('img')) t.remove();
+      });
+
+      // 2. Related-article sections: 3+ headings with little text per heading
+      //    (a listing of teasers, not a body of prose).
+      kenEl.querySelectorAll('div,section,aside').forEach(function (el) {
+        if (!el.parentNode) return;
+        var hs = el.querySelectorAll('h1,h2,h3,h4');
+        if (hs.length < 3) return;
+        if ((el.textContent || '').trim().length / hs.length < 300) el.remove();
+      });
+
+      // 3. Logo/brand blocks: near-empty element with a single Ken-branded image.
+      kenEl.querySelectorAll('div,p,figure,section').forEach(function (el) {
+        if (!el.parentNode) return;
+        if ((el.textContent || '').trim().length > 60) return;
+        var imgs = el.querySelectorAll('img');
+        if (imgs.length !== 1) return;
+        var src = imgs[0].getAttribute('src') || imgs[0].getAttribute('data-src') || '';
+        if (/the-ken|ken\.com|logo|brand/i.test(src)) el.remove();
+      });
+
+      // 4. Inline CTAs by text content.
+      kenEl.querySelectorAll('a,p,div').forEach(function (n) {
+        if (!n.parentNode) return;
         if (/^\s*see more visual stories\s*$/i.test(n.textContent)) n.remove();
       });
     } catch (e) {}
+
     finish(fallbackExtract(kenEl));
   } else {
     // ── Generic path: Readability.js with CSP-timeout fallback ─────
