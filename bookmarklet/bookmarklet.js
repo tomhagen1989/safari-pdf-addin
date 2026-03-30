@@ -540,22 +540,37 @@
 
     // Strip noise by content structure — no class names, survives redesigns.
     try {
-      // 1. Newsletter/promo tables: have images but no header cells.
-      //    Data tables always use <th>; widget tables never do.
+      var totalTxt = (kenEl.textContent || '').length;
+
+      // 1. Tables with no header cells = widget/promo (data tables always use <th>).
+      //    Catch both image-based widgets and text-only newsletter tables (≤2 rows).
       kenEl.querySelectorAll('table').forEach(function (t) {
-        if (!t.querySelector('th') && t.querySelector('img')) t.remove();
+        if (t.querySelector('th')) return;
+        if (t.querySelector('img') || t.rows.length <= 2) t.remove();
       });
 
-      // 2. Related-article sections: 3+ headings with little text per heading
-      //    (a listing of teasers, not a body of prose).
+      // 2. Related-article sections: find containers whose text is a small fraction
+      //    of the total (so we never strip the main article body) AND which have
+      //    3+ headings with low text-per-heading OR high link density.
       kenEl.querySelectorAll('div,section,aside').forEach(function (el) {
         if (!el.parentNode) return;
+        var txt = (el.textContent || '').trim().length;
+        if (txt > totalTxt * 0.5) return; // too large — almost certainly the article body
         var hs = el.querySelectorAll('h1,h2,h3,h4');
-        if (hs.length < 3) return;
-        if ((el.textContent || '').trim().length / hs.length < 300) el.remove();
+        var links = el.querySelectorAll('a');
+        var linkTxt = Array.prototype.reduce.call(
+          links, function (n, a) { return n + (a.textContent || '').length; }, 0);
+        var isListing = hs.length >= 3 && txt / hs.length < 350;
+        var isNavBlock = links.length >= 4 && txt > 0 && linkTxt / txt > 0.6;
+        if (isListing || isNavBlock) el.remove();
       });
 
-      // 3. Logo/brand blocks: near-empty element with a single Ken-branded image.
+      // 3. PHP/debug output in <pre> blocks (e.g. Array ( ) dumps).
+      kenEl.querySelectorAll('pre').forEach(function (pre) {
+        if (/^\s*Array\s*\(/.test(pre.textContent)) pre.remove();
+      });
+
+      // 4. Logo/brand blocks: near-empty element with a single Ken-branded image.
       kenEl.querySelectorAll('div,p,figure,section').forEach(function (el) {
         if (!el.parentNode) return;
         if ((el.textContent || '').trim().length > 60) return;
@@ -565,10 +580,12 @@
         if (/the-ken|ken\.com|logo|brand/i.test(src)) el.remove();
       });
 
-      // 4. Inline CTAs by text content.
-      kenEl.querySelectorAll('a,p,div').forEach(function (n) {
+      // 5. Inline CTAs and paywall notices.
+      kenEl.querySelectorAll('a,p,div,section').forEach(function (n) {
         if (!n.parentNode) return;
-        if (/^\s*see more visual stories\s*$/i.test(n.textContent)) n.remove();
+        var t = (n.textContent || '').trim();
+        if (/^\s*see more visual stories\s*$/i.test(t)) { n.remove(); return; }
+        if (t.length < 400 && /you are on a free plan|subscription has expired|upgrade now/i.test(t)) n.remove();
       });
     } catch (e) {}
 
