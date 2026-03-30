@@ -453,7 +453,8 @@
         + 'p,li{orphans:3;widows:3}'
         + 'blockquote[data-pullquote]{page-break-inside:avoid}'
         + 'table{page-break-inside:avoid}'
-        + '*:not(body){background-color:transparent!important;box-shadow:none!important}'
+        + 'html{background:' + theme.bg + '!important}'
+        + '*:not(body):not(html){background-color:transparent!important;box-shadow:none!important}'
         + '}',
     ].join('');
 
