@@ -380,6 +380,7 @@
         + 'padding:7px 18px;font-weight:700;font-size:13px;cursor:pointer;letter-spacing:.02em}',
       '#pspacer{height:48px}',
 
+      'html{background:' + theme.bg + '}',
       'body{font-family:' + theme.fontFamily + ';font-size:18px;line-height:1.6;'
         + 'color:' + theme.color + ';background:' + theme.bg + ';'
         + 'max-width:700px;margin:0 auto;padding:1.5rem 1.5rem 4rem;'
