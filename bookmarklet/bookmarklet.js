@@ -536,26 +536,41 @@
     // Force clean white — skip theme auto-detection for The Ken
     theme.bg = '#ffffff';
     theme.color = '#1a1a1a';
-    var kenEl = document.querySelector('main.story-content') || document.body;
 
-    // Strip noise by content structure — no class names, survives redesigns.
+    // Newsletter pages (mica_newsletter) embed an HTML email template.
+    // Their content lives in .email-template, not main.story-content.
+    var isKenNewsletter = /mica_newsletter|single-mica_newsletter/.test(document.body.className || '');
+    var kenEl = isKenNewsletter
+      ? (document.querySelector('.email-template') || document.querySelector('main.story-content') || document.body)
+      : (document.querySelector('main.story-content') || document.body);
+
     try {
+      // ── Pass 1: strip known Ken email-chrome by class name ──────────
+      // These classes come from The Ken's email template framework and
+      // are stable. Desktop/mobile duplicate header tables, share widgets,
+      // footer link tables, and subscription modals are all covered.
+      var KEN_CHROME = /\b(email-header|newsletter-hero|share-section|share-unit|footer-link|footer-product-link|whitelist-email|email-modal|single-newsletter-wrapper)\b/;
+      kenEl.querySelectorAll('[class]').forEach(function (el) {
+        if (!el.parentNode) return;
+        if (KEN_CHROME.test(el.className)) el.remove();
+      });
+
       var totalTxt = (kenEl.textContent || '').length;
 
-      // 1. Tables with no header cells = widget/promo (data tables always use <th>).
-      //    Catch both image-based widgets and text-only newsletter tables (≤2 rows).
+      // ── Pass 2: structural rules — survive any redesign ─────────────
+
+      // Tables with no header cells = widget/promo (data tables always use <th>).
       kenEl.querySelectorAll('table').forEach(function (t) {
         if (t.querySelector('th')) return;
         if (t.querySelector('img') || t.rows.length <= 2) t.remove();
       });
 
-      // 2. Related-article sections: find containers whose text is a small fraction
-      //    of the total (so we never strip the main article body) AND which have
-      //    3+ headings with low text-per-heading OR high link density.
+      // Related-article sections: containers <50% of total text with 3+ headings
+      // averaging <350 chars, or with link text >60% of total text.
       kenEl.querySelectorAll('div,section,aside').forEach(function (el) {
         if (!el.parentNode) return;
         var txt = (el.textContent || '').trim().length;
-        if (txt > totalTxt * 0.5) return; // too large — almost certainly the article body
+        if (txt > totalTxt * 0.5) return;
         var hs = el.querySelectorAll('h1,h2,h3,h4');
         var links = el.querySelectorAll('a');
         var linkTxt = Array.prototype.reduce.call(
@@ -565,12 +580,12 @@
         if (isListing || isNavBlock) el.remove();
       });
 
-      // 3. PHP/debug output in <pre> blocks (e.g. Array ( ) dumps).
+      // PHP/debug output in <pre> blocks (e.g. Array ( ) dumps).
       kenEl.querySelectorAll('pre').forEach(function (pre) {
         if (/^\s*Array\s*\(/.test(pre.textContent)) pre.remove();
       });
 
-      // 4. Logo/brand blocks: near-empty element with a single Ken-branded image.
+      // Logo/brand blocks: near-empty element with a single Ken-branded image.
       kenEl.querySelectorAll('div,p,figure,section').forEach(function (el) {
         if (!el.parentNode) return;
         if ((el.textContent || '').trim().length > 60) return;
@@ -580,7 +595,7 @@
         if (/the-ken|ken\.com|logo|brand/i.test(src)) el.remove();
       });
 
-      // 5. Inline CTAs and paywall notices.
+      // Inline CTAs and paywall notices.
       kenEl.querySelectorAll('a,p,div,section').forEach(function (n) {
         if (!n.parentNode) return;
         var t = (n.textContent || '').trim();
