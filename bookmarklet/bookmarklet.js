@@ -155,14 +155,59 @@
     + '[class*="quote-callout"],[class*="quote-highlight"],[class*="callout-quote"]';
 
   function fallbackExtract(el) {
+    // ── Hero image: WordPress puts featured images OUTSIDE <article> ──
+    // Look in preceding siblings for a large content image and prepend it.
+    var heroImg = null;
+    try {
+      var sib = el.previousElementSibling;
+      for (var si = 0; si < 6 && sib && !heroImg; si++) {
+        var imgs = sib.querySelectorAll('img[src]');
+        for (var ii = 0; ii < imgs.length; ii++) {
+          var candidate = imgs[ii];
+          var csrc = candidate.getAttribute('src') || '';
+          var calt = candidate.getAttribute('alt') || '';
+          // Skip icons, arrows, logos, decorative images
+          if (/icon|logo|arrow|bullet|quote|decorat/i.test(csrc)) continue;
+          if (!calt && (parseInt(candidate.getAttribute('width')||'999') < 200)) continue;
+          heroImg = candidate.cloneNode(true);
+          break;
+        }
+        sib = sib.previousElementSibling;
+      }
+    } catch (e) {}
+
     var clone = el.cloneNode(true);
 
-    // Normalise pull-quote containers before stripping classes.
-    // Use textContent (not child tag queries) so it works regardless of
-    // whether the site uses <p>, <span>, <div>, or other inner elements.
-    // SVG icons inside the container produce no textContent, so they're
-    // automatically excluded.
+    // ── Targeted pull-quote detection (The Ken & similar sites) ───────
+    // Find by pull-quote-text class → grab parent container → replace.
+    // This runs BEFORE general PQ_SEL so The Ken's exact class is caught.
     try {
+      var pqTextSel = '[class*="pull-quote-text"],[class*="pullquote__text"],'
+        + '[class*="pullquote-text"],[class*="quote__text"],[class*="quote-body"]';
+      clone.querySelectorAll(pqTextSel).forEach(function (textEl) {
+        var container = textEl.parentNode;
+        if (!container || !container.parentNode) return;
+        var text = textEl.textContent.trim();
+        if (!text) return;
+        var srcEl = container.querySelector(
+          '[class*="pull-quote-source"],[class*="pullquote-source"],'
+          + '[class*="quote-source"],[class*="quote-attribution"],[class*="quote-cite"]'
+        );
+        var bq = document.createElement('blockquote');
+        bq.setAttribute('data-pullquote', '1');
+        var qp = document.createElement('p');
+        qp.textContent = text;
+        bq.appendChild(qp);
+        if (srcEl) {
+          var cite = document.createElement('cite');
+          cite.textContent = srcEl.textContent.trim();
+          bq.appendChild(cite);
+        }
+        container.parentNode.replaceChild(bq, container);
+      });
+    } catch (e) {}
+
+    // ── General pull-quote detection (other sites) ────────────────────
       clone.querySelectorAll(PQ_SEL).forEach(function (pq) {
         var lines = (pq.textContent || '').split('\n')
           .map(function (l) { return l.trim(); })
@@ -205,6 +250,14 @@
       '[aria-hidden="true"],[hidden],[role="tooltip"],'
       + '[class*="sr-only"],[class*="screen-reader"],[class*="visually-hidden"]'
     ).forEach(function (n) { n.remove(); });
+
+    // Remove known pull-quote decoration elements by class (any that survived
+    // container replacement, e.g. if the container class wasn't matched).
+    clone.querySelectorAll(
+      '[class*="pull-quote-img"],[class*="pullquote-img"],[class*="pull-quote-divider"],'
+      + '[class*="pullquote-divider"],[class*="quote-divider"],[class*="quote-decoration"]'
+    ).forEach(function (n) { n.remove(); });
+
     clone.querySelectorAll('p,div,span,h1,h2,h3,h4,h5,h6').forEach(function (n) {
       if (n.children.length === 0 && DECORATIVE_QUOTE.test(n.textContent.trim())) n.remove();
     });
@@ -243,7 +296,25 @@
     clone.querySelectorAll('a[href]').forEach(function (a) {
       try { a.href = new URL(a.getAttribute('href'), pageUrl).href; } catch (e) {}
     });
-    return clone.innerHTML;
+
+    var html = clone.innerHTML;
+
+    // Prepend hero image if we found one outside the article element
+    if (heroImg) {
+      try {
+        var hsrc = heroImg.getAttribute('src') || '';
+        if (hsrc) {
+          heroImg.setAttribute('src', new URL(hsrc, pageUrl).href);
+          // Strip all attrs except safe ones
+          Array.prototype.slice.call(heroImg.attributes).forEach(function (a) {
+            if (!SAFE_ATTRS[a.name]) heroImg.removeAttribute(a.name);
+          });
+          html = '<figure>' + heroImg.outerHTML + '</figure>' + html;
+        }
+      } catch (e) {}
+    }
+
+    return html;
   }
 
   // ── Post-process Readability's HTML output ───────────────────────
