@@ -155,24 +155,26 @@
     + '[class*="quote-callout"],[class*="quote-highlight"],[class*="callout-quote"]';
 
   function fallbackExtract(el) {
-    // ── Hero image: WordPress puts featured images OUTSIDE <article> ──
-    // Look in preceding siblings for a large content image and prepend it.
+    // ── Hero image: search whole document for content image outside article ──
+    // WordPress/custom themes often place the featured image in a wrapper
+    // OUTSIDE <article>. We scan all page images, skip anything inside our
+    // found element (already in clone), skip theme assets by URL pattern.
     var heroImg = null;
     try {
-      var sib = el.previousElementSibling;
-      for (var si = 0; si < 6 && sib && !heroImg; si++) {
-        var imgs = sib.querySelectorAll('img[src]');
-        for (var ii = 0; ii < imgs.length; ii++) {
-          var candidate = imgs[ii];
-          var csrc = candidate.getAttribute('src') || '';
-          var calt = candidate.getAttribute('alt') || '';
-          // Skip icons, arrows, logos, decorative images
-          if (/icon|logo|arrow|bullet|quote|decorat/i.test(csrc)) continue;
-          if (!calt && (parseInt(candidate.getAttribute('width')||'999') < 200)) continue;
-          heroImg = candidate.cloneNode(true);
-          break;
-        }
-        sib = sib.previousElementSibling;
+      var allImgs = document.querySelectorAll('img[src]');
+      for (var ii = 0; ii < allImgs.length && !heroImg; ii++) {
+        var cand = allImgs[ii];
+        if (el.contains(cand)) continue;                    // already in article
+        var csrc = cand.getAttribute('src') || '';
+        // Skip theme assets, icons, SVG decorations, tiny images
+        if (/\/themes\/|\/assets\/|icon|logo|arrow|bullet|quote|decorat|spinner/i.test(csrc)) continue;
+        if (/\.svg$/i.test(csrc)) continue;
+        var cw = parseInt(cand.getAttribute('width') || '0');
+        var ch = parseInt(cand.getAttribute('height') || '0');
+        if ((cw > 0 && cw < 200) || (ch > 0 && ch < 200)) continue;
+        // Skip if inside site chrome
+        if (cand.closest('nav,footer,[class*="sidebar"],[class*="related"],[class*="recommend"]')) continue;
+        heroImg = cand.cloneNode(true);
       }
     } catch (e) {}
 
