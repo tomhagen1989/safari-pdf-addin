@@ -465,7 +465,7 @@
     var html = '<!DOCTYPE html><html lang="en"><head>'
       + '<meta charset="utf-8">'
       + '<meta name="viewport" content="width=device-width,initial-scale=1">'
-      + '<title>' + escHtml(t) + '</title>'
+      + '<title>' + escHtml([t, siteName, pubDate].filter(Boolean).join(' \u2013 ')) + '</title>'
       + '<style>' + css + '</style>'
       + '</head><body>'
       + bar
