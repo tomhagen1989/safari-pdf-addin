@@ -155,28 +155,6 @@
     + '[class*="quote-callout"],[class*="quote-highlight"],[class*="callout-quote"]';
 
   function fallbackExtract(el) {
-    // ── Hero image: search whole document for content image outside article ──
-    // WordPress/custom themes often place the featured image in a wrapper
-    // OUTSIDE <article>. We scan all page images, skip anything inside our
-    // found element (already in clone), skip theme assets by URL pattern.
-    var heroImg = null;
-    try {
-      var allImgs = document.querySelectorAll('img[src]');
-      for (var ii = 0; ii < allImgs.length && !heroImg; ii++) {
-        var cand = allImgs[ii];
-        if (el.contains(cand)) continue;                    // already in article
-        var csrc = cand.getAttribute('src') || '';
-        // Skip theme assets, icons, SVG decorations, tiny images
-        if (/\/themes\/|\/assets\/|icon|logo|arrow|bullet|quote|decorat|spinner/i.test(csrc)) continue;
-        if (/\.svg$/i.test(csrc)) continue;
-        var cw = parseInt(cand.getAttribute('width') || '0');
-        var ch = parseInt(cand.getAttribute('height') || '0');
-        if ((cw > 0 && cw < 200) || (ch > 0 && ch < 200)) continue;
-        // Skip if inside site chrome
-        if (cand.closest('nav,footer,[class*="sidebar"],[class*="related"],[class*="recommend"]')) continue;
-        heroImg = cand.cloneNode(true);
-      }
-    } catch (e) {}
 
     var clone = el.cloneNode(true);
 
@@ -210,6 +188,7 @@
     } catch (e) {}
 
     // ── General pull-quote detection (other sites) ────────────────────
+    try {
       clone.querySelectorAll(PQ_SEL).forEach(function (pq) {
         var lines = (pq.textContent || '').split('\n')
           .map(function (l) { return l.trim(); })
@@ -301,20 +280,8 @@
 
     var html = clone.innerHTML;
 
-    // Prepend hero image if we found one outside the article element
-    if (heroImg) {
-      try {
-        var hsrc = heroImg.getAttribute('src') || '';
-        if (hsrc) {
-          heroImg.setAttribute('src', new URL(hsrc, pageUrl).href);
-          // Strip all attrs except safe ones
-          Array.prototype.slice.call(heroImg.attributes).forEach(function (a) {
-            if (!SAFE_ATTRS[a.name]) heroImg.removeAttribute(a.name);
-          });
-          html = '<figure>' + heroImg.outerHTML + '</figure>' + html;
-        }
-      } catch (e) {}
-    }
+    // Prepend hero image (captured from og:image before DOM was mutated)
+    if (heroHtml) html = heroHtml + html;
 
     return html;
   }
@@ -521,6 +488,20 @@
   var siteName = getSiteName();
   var pageUrl  = window.location.href;
 
+  // ── Hero image: og:image is the most reliable source ────────────
+  // WordPress / CMSes always populate this with the featured image.
+  // We capture it before Readability can mutate the DOM, and prepend
+  // it in both the Readability and fallback code paths.
+  var heroHtml = '';
+  var heroSrc  = '';
+  try {
+    var ogImgEl = document.querySelector('meta[property="og:image"]');
+    if (ogImgEl && ogImgEl.content) {
+      heroSrc  = new URL(ogImgEl.content.trim(), pageUrl).href;
+      heroHtml = '<figure><img src="' + escHtml(heroSrc) + '" alt=""></figure>';
+    }
+  } catch (e) {}
+
   // ── Show loading overlay immediately ─────────────────────────────
   // Gives instant visual feedback. Disappears when document.write() fires.
   // We inject into the live DOM (not document.write) so our script tag
@@ -563,7 +544,10 @@
       // about to replace the entire page with document.write() anyway.
       var article = new Readability(document).parse(); // eslint-disable-line no-undef
       if (article && article.content && article.content.length > 300) {
-        finish(postProcess(article.content), article.title, article.byline);
+        var processed = postProcess(article.content);
+        // Prepend hero image if Readability didn't already capture it
+        var prefix = (heroHtml && heroSrc && processed.indexOf(heroSrc) === -1) ? heroHtml : '';
+        finish(prefix + processed, article.title, article.byline);
         return;
       }
     } catch (e) {}
