@@ -452,6 +452,7 @@
         + 'p,li{orphans:3;widows:3}'
         + 'blockquote[data-pullquote]{page-break-inside:avoid}'
         + 'table{page-break-inside:avoid}'
+        + '*:not(body){background-color:transparent!important;box-shadow:none!important}'
         + '}',
     ].join('');
 
@@ -531,6 +532,12 @@
   // Skip Readability.js entirely: use the known article selector directly.
   if (/\bthe-ken\.com\b/.test(window.location.hostname)) {
     var kenEl = document.querySelector('main.story-content') || document.body;
+    // Strip Ken-specific CTAs before extraction
+    try {
+      kenEl.querySelectorAll('a, p, div').forEach(function (n) {
+        if (/^\s*see more visual stories\s*$/i.test(n.textContent)) n.remove();
+      });
+    } catch (e) {}
     finish(fallbackExtract(kenEl));
   } else {
     // ── Generic path: Readability.js with CSP-timeout fallback ─────
