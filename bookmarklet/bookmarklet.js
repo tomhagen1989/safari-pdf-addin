@@ -533,6 +533,9 @@
   // ── The Ken fast path ────────────────────────────────────────────
   // Skip Readability.js entirely: use the known article selector directly.
   if (/\bthe-ken\.com\b/.test(window.location.hostname)) {
+    // Force clean white — skip theme auto-detection for The Ken
+    theme.bg = '#ffffff';
+    theme.color = '#1a1a1a';
     var kenEl = document.querySelector('main.story-content') || document.body;
     // Strip Ken-specific CTAs before extraction
     try {
