@@ -518,10 +518,7 @@
     document.body.appendChild(overlay);
   } catch (e) {}
 
-  // ── Load Readability.js and extract ──────────────────────────────
-  // CSP violations do NOT fire script.onerror on iOS Safari, so we use
-  // a timeout as the safety net — if neither onload nor onerror fires
-  // within 4 s, we fall back to our own extractor.
+  // ── Extract and render ───────────────────────────────────────────
   var done = false;
 
   function finish(content, exTitle, exByline) {
@@ -530,36 +527,41 @@
     renderPage(content, exTitle || null, exByline || null);
   }
 
-  var cspTimeout = setTimeout(function () {
-    finish(fallbackExtract(findBestEl()));
-  }, 4000);
+  // ── The Ken fast path ────────────────────────────────────────────
+  // Skip Readability.js entirely: use the known article selector directly.
+  if (/\bthe-ken\.com\b/.test(window.location.hostname)) {
+    var kenEl = document.querySelector('main.story-content') || document.body;
+    finish(fallbackExtract(kenEl));
+  } else {
+    // ── Generic path: Readability.js with CSP-timeout fallback ─────
+    // CSP violations do NOT fire script.onerror on iOS Safari, so we use
+    // a timeout as the safety net.
+    var cspTimeout = setTimeout(function () {
+      finish(fallbackExtract(findBestEl()));
+    }, 4000);
 
-  var script = document.createElement('script');
-  script.src = READABILITY_URL;
+    var script = document.createElement('script');
+    script.src = READABILITY_URL;
 
-  script.onload = function () {
-    clearTimeout(cspTimeout);
-    try {
-      // Readability modifies the document in place — that's fine, we're
-      // about to replace the entire page with document.write() anyway.
-      var article = new Readability(document).parse(); // eslint-disable-line no-undef
-      if (article && article.content && article.content.length > 300) {
-        var processed = postProcess(article.content);
-        // Prepend hero image if Readability didn't already capture it
-        var prefix = (heroHtml && heroSrc && processed.indexOf(heroSrc) === -1) ? heroHtml : '';
-        finish(prefix + processed, article.title, article.byline);
-        return;
-      }
-    } catch (e) {}
-    // Readability returned nothing useful — fall back
-    finish(fallbackExtract(findBestEl()));
-  };
+    script.onload = function () {
+      clearTimeout(cspTimeout);
+      try {
+        var article = new Readability(document).parse(); // eslint-disable-line no-undef
+        if (article && article.content && article.content.length > 300) {
+          var processed = postProcess(article.content);
+          var prefix = (heroHtml && heroSrc && processed.indexOf(heroSrc) === -1) ? heroHtml : '';
+          finish(prefix + processed, article.title, article.byline);
+          return;
+        }
+      } catch (e) {}
+      finish(fallbackExtract(findBestEl()));
+    };
 
-  script.onerror = function () {
-    clearTimeout(cspTimeout);
-    // Network error (offline, GitHub Pages down, etc.) — fall back silently
-    finish(fallbackExtract(findBestEl()));
-  };
+    script.onerror = function () {
+      clearTimeout(cspTimeout);
+      finish(fallbackExtract(findBestEl()));
+    };
 
-  document.head.appendChild(script);
+    document.head.appendChild(script);
+  }
 })();
